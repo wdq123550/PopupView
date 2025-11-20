@@ -285,47 +285,117 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
         )
     }
 
+//    func appearAction(popupPresented: Bool) {
+//        if popupPresented {
+//            dismissSource = nil
+//            showSheet = true // show transparent fullscreen sheet
+//            showContent = true // immediately load popup body
+//            // shouldShowContent is set after popup's frame is calculated, see positionIsCalculatedCallback
+//        } else {
+//            closingIsInProcess = true
+//            userWillDismissCallback(dismissSource ?? .binding)
+//            autohidingWorkHolder.work?.cancel()
+//            dismissibleInWorkHolder.work?.cancel()
+//            shouldShowContent = false // this will cause currentOffset change thus triggering the sliding hiding animation
+//            animatableOpacity = 0
+//            // do the rest once the animation is finished (see onAnimationCompleted())
+//        }
+//
+//        // animation completion block isn't being called reliably when there are other animations happening at the same time (drag, autohide, etc.) so here we imitate onAnimationCompleted
+//        performWithDelay(0.3) {
+//            onAnimationCompleted()
+//        }
+//    }
+    
     func appearAction(popupPresented: Bool) {
         if popupPresented {
+            // --- 打开 ---
             dismissSource = nil
-            showSheet = true // show transparent fullscreen sheet
-            showContent = true // immediately load popup body
-            // shouldShowContent is set after popup's frame is calculated, see positionIsCalculatedCallback
+            showSheet = true          // 显示透明 fullscreen sheet（window / sheet 模式用）
+            showContent = true        // 立刻把 popup body 加进视图树
+            // shouldShowContent 会在 Popup 内部 layout 完成后、通过 positionIsCalculatedCallback 置为 true
+
+            // Bool 模式下仍然需要一个“动画完成”的信号来释放 eventsSemaphore
+            if isBoolMode {
+                performWithDelay(0.3) {
+                    onAnimationCompleted()
+                }
+            }
         } else {
+            // --- 关闭 ---
             closingIsInProcess = true
             userWillDismissCallback(dismissSource ?? .binding)
+
             autohidingWorkHolder.work?.cancel()
             dismissibleInWorkHolder.work?.cancel()
-            shouldShowContent = false // this will cause currentOffset change thus triggering the sliding hiding animation
-            animatableOpacity = 0
-            // do the rest once the animation is finished (see onAnimationCompleted())
-        }
 
-        // animation completion block isn't being called reliably when there are other animations happening at the same time (drag, autohide, etc.) so here we imitate onAnimationCompleted
-        performWithDelay(0.3) {
-            onAnimationCompleted()
+            // 触发 Popup 的隐藏动画
+            shouldShowContent = false
+            animatableOpacity = 0
+
+            // 关闭阶段，等动画结束再做收尾
+            performWithDelay(0.3) {
+                onAnimationCompleted()
+            }
         }
     }
 
+
+//    func onAnimationCompleted() {
+//        if shouldShowContent { // return if this was called on showing animation, only proceed if called on hiding
+//            eventsSemaphore.signal()
+//            return
+//        }
+//        showContent = false // unload popup body after hiding animation is done
+//        tempItemView = nil
+//        if dismissibleIn != nil {
+//            dismissEnabled.wrappedValue = false
+//        }
+//        performWithDelay(0.01) {
+//            showSheet = false
+//        }
+//        if displayMode != .sheet { // for .sheet this callback is called in fullScreenCover's onDisappear
+//            userDismissCallback(dismissSource ?? .binding)
+//        }
+//
+//        eventsSemaphore.signal()
+//    }
+    
     func onAnimationCompleted() {
-        if shouldShowContent { // return if this was called on showing animation, only proceed if called on hiding
+
+        // 如果当前根本不是“正在关闭”的状态（例如：打开阶段触发的 onAnimationCompleted），
+        // 只负责释放信号量，不做任何收尾逻辑，避免误判成关闭完成。
+        guard closingIsInProcess else {
             eventsSemaphore.signal()
             return
         }
-        showContent = false // unload popup body after hiding animation is done
+
+        // 如果此时仍然是显示状态（shouldShowContent == true），说明动画还没真正隐藏完，
+        // 同样只释放信号量，不做收尾。
+        if shouldShowContent {
+            eventsSemaphore.signal()
+            return
+        }
+
+        // --- 真正的“关闭完成”收尾逻辑 ---
+        showContent = false          // 从视图树卸载 popup body
         tempItemView = nil
+
         if dismissibleIn != nil {
             dismissEnabled.wrappedValue = false
         }
+
         performWithDelay(0.01) {
             showSheet = false
         }
-        if displayMode != .sheet { // for .sheet this callback is called in fullScreenCover's onDisappear
+
+        if displayMode != .sheet {   // .sheet 下，dismissCallback 在 fullScreenCover 的 onDisappear 里调
             userDismissCallback(dismissSource ?? .binding)
         }
 
         eventsSemaphore.signal()
     }
+
 
     func setupAutohide() {
         // if needed, dispatch autohide and cancel previous one
