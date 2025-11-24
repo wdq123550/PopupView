@@ -45,6 +45,6 @@ struct PopupBackgroundView<Item: Equatable>: View {
             }
         }
         .edgesIgnoringSafeArea(.all)
-//        .animation(.linear(duration: 0.2), value: animatableOpacity)
+        .animation(.linear(duration: 0.2), value: animatableOpacity)
     }
 }
