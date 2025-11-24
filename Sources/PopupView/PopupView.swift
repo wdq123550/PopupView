@@ -236,9 +236,40 @@ public struct Popup<PopupContent: View>: ViewModifier {
     }
 
     func hiddenOffset(_ appearAnimation: AppearAnimation) -> CGPoint {
+
+        // 当前 shouldShowContent = false 时，代表在做「消失」动画
+        let isClosing = !shouldShowContent.wrappedValue
+
+        // 🔹只在 overlay + 正在 dismiss 时，改用更「粗暴」的 off-screen 位置
+        if displayMode == .overlay, isClosing {
+            switch appearAnimation {
+            case .topSlide:
+                // 向上滑出屏幕
+                return CGPoint(x: displayedOffsetX, y: -screenHeight)
+            case .bottomSlide:
+                // 向下滑出屏幕
+                return CGPoint(x: displayedOffsetX, y: screenHeight)
+            case .leftSlide:
+                // 向左滑出屏幕
+                return CGPoint(x: -screenWidth, y: displayedOffsetY)
+            case .rightSlide:
+                // 向右滑出屏幕
+                return CGPoint(x: screenWidth, y: displayedOffsetY)
+            case .centerScale, .none:
+                // centerScale 原本就是纯缩放动画，这里保持原样，不改偏移
+                return CGPoint(x: displayedOffsetX, y: displayedOffsetY)
+            }
+        }
+
+        // 🔹其他情况（包括所有 show 阶段、非 overlay 模式），保持原始逻辑
         switch appearAnimation {
         case .topSlide:
-            return CGPoint(x: displayedOffsetX, y: -presenterContentRect.minY - safeAreaInsets.top - sheetContentRect.height)
+            return CGPoint(
+                x: displayedOffsetX,
+                y: -presenterContentRect.minY
+                  - safeAreaInsets.top
+                  - sheetContentRect.height
+            )
         case .bottomSlide:
             return CGPoint(x: displayedOffsetX, y: screenHeight)
         case .leftSlide:
@@ -249,6 +280,7 @@ public struct Popup<PopupContent: View>: ViewModifier {
             return CGPoint(x: displayedOffsetX, y: displayedOffsetY)
         }
     }
+
 
     /// Passes the desired position to actualCurrentOffset allowing to animate selectively
     private var targetCurrentOffset: CGPoint {
