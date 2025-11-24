@@ -361,62 +361,24 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
 //        eventsSemaphore.signal()
 //    }
     
-//    func onAnimationCompleted() {
-//
-//        // 如果当前根本不是“正在关闭”的状态（例如：打开阶段触发的 onAnimationCompleted），
-//        // 只负责释放信号量，不做任何收尾逻辑，避免误判成关闭完成。
-//        guard closingIsInProcess else {
-//            eventsSemaphore.signal()
-//            return
-//        }
-//
-//        // 如果此时仍然是显示状态（shouldShowContent == true），说明动画还没真正隐藏完，
-//        // 同样只释放信号量，不做收尾。
-//        if shouldShowContent {
-//            eventsSemaphore.signal()
-//            return
-//        }
-//
-//        // --- 真正的“关闭完成”收尾逻辑 ---
-//        showContent = false          // 从视图树卸载 popup body
-//        tempItemView = nil
-//
-//        if dismissibleIn != nil {
-//            dismissEnabled.wrappedValue = false
-//        }
-//
-//        performWithDelay(0.01) {
-//            showSheet = false
-//        }
-//
-//        if displayMode != .sheet {   // .sheet 下，dismissCallback 在 fullScreenCover 的 onDisappear 里调
-//            userDismissCallback(dismissSource ?? .binding)
-//        }
-//
-//        eventsSemaphore.signal()
-//    }
-    
     func onAnimationCompleted() {
 
-        // 不是关闭，不做收尾
+        // 如果当前根本不是“正在关闭”的状态（例如：打开阶段触发的 onAnimationCompleted），
+        // 只负责释放信号量，不做任何收尾逻辑，避免误判成关闭完成。
         guard closingIsInProcess else {
             eventsSemaphore.signal()
             return
         }
 
-        // 动画还没完全结束（仍处于显示状态）
+        // 如果此时仍然是显示状态（shouldShowContent == true），说明动画还没真正隐藏完，
+        // 同样只释放信号量，不做收尾。
         if shouldShowContent {
             eventsSemaphore.signal()
             return
         }
 
-        // --- 真正 ready to hide ---
-
-        // 🔥 延迟卸载内容，让 dismiss 动画能执行
-        performWithDelay(0.25) {
-            self.showContent = false
-        }
-
+        // --- 真正的“关闭完成”收尾逻辑 ---
+        showContent = false          // 从视图树卸载 popup body
         tempItemView = nil
 
         if dismissibleIn != nil {
@@ -424,16 +386,15 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
         }
 
         performWithDelay(0.01) {
-            self.showSheet = false
+            showSheet = false
         }
 
-        if displayMode != .sheet {
+        if displayMode != .sheet {   // .sheet 下，dismissCallback 在 fullScreenCover 的 onDisappear 里调
             userDismissCallback(dismissSource ?? .binding)
         }
 
         eventsSemaphore.signal()
     }
-
 
 
     func setupAutohide() {
