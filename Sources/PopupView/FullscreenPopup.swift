@@ -197,6 +197,7 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
             ZStack {
                 content
                 constructPopup()
+                    .id(id)
             }
 
         case .sheet:
