@@ -307,40 +307,84 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
 //        }
 //    }
     
+//    func appearAction(popupPresented: Bool) {
+//        if popupPresented {
+//            // --- 打开 ---
+//            dismissSource = nil
+//            showSheet = true          // 显示透明 fullscreen sheet（window / sheet 模式用）
+//            showContent = true        // 立刻把 popup body 加进视图树
+//            // shouldShowContent 会在 Popup 内部 layout 完成后、通过 positionIsCalculatedCallback 置为 true
+//
+//            // Bool 模式下仍然需要一个“动画完成”的信号来释放 eventsSemaphore
+//            if isBoolMode {
+//                performWithDelay(0.3) {
+//                    onAnimationCompleted()
+//                }
+//            }
+//        } else {
+//            // --- 关闭 ---
+//            closingIsInProcess = true
+//            userWillDismissCallback(dismissSource ?? .binding)
+//
+//            autohidingWorkHolder.work?.cancel()
+//            dismissibleInWorkHolder.work?.cancel()
+//
+//            // 触发 Popup 的隐藏动画
+//            shouldShowContent = false
+//            animatableOpacity = 0
+//
+//            // 关闭阶段，等动画结束再做收尾
+//            performWithDelay(0.3) {
+//                onAnimationCompleted()
+//            }
+//        }
+//    }
+
     func appearAction(popupPresented: Bool) {
         if popupPresented {
             // --- 打开 ---
+            // 重置关闭状态，清掉上一次的 dismiss 来源
+            closingIsInProcess = false
             dismissSource = nil
-            showSheet = true          // 显示透明 fullscreen sheet（window / sheet 模式用）
+
+            // sheet/window 模式用到的标记；overlay 模式下其实影响不大，但保持一致
+            showSheet = true          // 显示透明 fullscreen sheet（或触发 window 显示）
             showContent = true        // 立刻把 popup body 加进视图树
             // shouldShowContent 会在 Popup 内部 layout 完成后、通过 positionIsCalculatedCallback 置为 true
 
-            // Bool 模式下仍然需要一个“动画完成”的信号来释放 eventsSemaphore
+            // ⚠️ Bool 模式下仍然需要一个“动画完成”的信号来释放 eventsSemaphore
+            // （见 body(isBoolMode) 里 eventsQueue + eventsSemaphore）
             if isBoolMode {
                 performWithDelay(0.3) {
-                    onAnimationCompleted()
+                    onAnimationCompleted()  // 在 onAnimationCompleted 里只会 signal，不会做收尾（closingIsInProcess 为 false）
                 }
             }
         } else {
             // --- 关闭 ---
             closingIsInProcess = true
+
+            // 通知外部“即将开始 dismiss 动画”
             userWillDismissCallback(dismissSource ?? .binding)
 
+            // 取消 autohide / dismissible 相关的计时任务
             autohidingWorkHolder.work?.cancel()
             dismissibleInWorkHolder.work?.cancel()
 
-            // 触发 Popup 的隐藏动画
+            // 触发 Popup 内部的隐藏动画（位置/缩放在 Popup 里通过 shouldShowContent 变化驱动）
             shouldShowContent = false
-            animatableOpacity = 0
 
-            // 关闭阶段，等动画结束再做收尾
+            // 背景淡出动画：和 positionIsCalculatedCallback 中的 0.2s 保持对称
+            withAnimation(.linear(duration: 0.2)) {
+                animatableOpacity = 0
+            }
+
+            // 关闭阶段动画完成后的收尾逻辑统一放在 onAnimationCompleted 里做
             performWithDelay(0.3) {
                 onAnimationCompleted()
             }
         }
     }
-
-
+    
 //    func onAnimationCompleted() {
 //        if shouldShowContent { // return if this was called on showing animation, only proceed if called on hiding
 //            eventsSemaphore.signal()
@@ -433,8 +477,6 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
 
         eventsSemaphore.signal()
     }
-
-
 
     func setupAutohide() {
         // if needed, dispatch autohide and cancel previous one
