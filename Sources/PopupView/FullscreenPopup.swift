@@ -333,9 +333,11 @@ public struct FullscreenPopup<Item: Equatable, PopupContent: View>: ViewModifier
             shouldShowContent = false
             animatableOpacity = 0
             
-            // ★强制触发 dismiss 动画（iOS17 overlay 下 onChange 不会触发）
+            // ★ iOS17 overlay dismiss 不执行 onChange，需要手动触发动画链路
             DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .forcePopupDismissAnimation, object: nil)
+                withAnimation(self.params.animation) {
+                    self.shouldShowContent = false
+                }
             }
 
             // 关闭阶段，等动画结束再做收尾
