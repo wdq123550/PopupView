@@ -236,9 +236,31 @@ public struct Popup<PopupContent: View>: ViewModifier {
     }
 
     func hiddenOffset(_ appearAnimation: AppearAnimation) -> CGPoint {
+
+        // ——★ 关键：overlay 模式必须强制移出屏幕，否则 iOS17 动画不会触发 ★——
+        if displayMode == .overlay {
+            switch appearAnimation {
+            case .topSlide:
+                return CGPoint(x: displayedOffsetX, y: -screenHeight)
+            case .bottomSlide:
+                return CGPoint(x: displayedOffsetX, y: screenHeight)
+            case .leftSlide:
+                return CGPoint(x: -screenWidth, y: displayedOffsetY)
+            case .rightSlide:
+                return CGPoint(x: screenWidth, y: displayedOffsetY)
+            case .centerScale, .none:
+                // center 的隐藏方向，你可以选任何方向，这里向下走最自然
+                return CGPoint(x: displayedOffsetX, y: displayedOffsetY + screenHeight)
+            }
+        }
+
+        // —— 原逻辑（sheet/window）保持不变 —— //
         switch appearAnimation {
         case .topSlide:
-            return CGPoint(x: displayedOffsetX, y: -presenterContentRect.minY - safeAreaInsets.top - sheetContentRect.height)
+            return CGPoint(
+                x: displayedOffsetX,
+                y: -presenterContentRect.minY - safeAreaInsets.top - sheetContentRect.height
+            )
         case .bottomSlide:
             return CGPoint(x: displayedOffsetX, y: screenHeight)
         case .leftSlide:
@@ -249,6 +271,7 @@ public struct Popup<PopupContent: View>: ViewModifier {
             return CGPoint(x: displayedOffsetX, y: displayedOffsetY)
         }
     }
+
 
     /// Passes the desired position to actualCurrentOffset allowing to animate selectively
     private var targetCurrentOffset: CGPoint {
