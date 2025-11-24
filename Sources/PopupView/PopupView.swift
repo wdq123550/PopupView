@@ -377,14 +377,6 @@ public struct Popup<PopupContent: View>: ViewModifier {
         content
             .frameGetter($presenterContentRect)
             .safeAreaGetter($safeAreaInsets)
-            .onReceive(NotificationCenter.default.publisher(for: .forcePopupDismissAnimation)) { _ in
-                // dismiss 阶段 shouldShowContent == false
-                if !shouldShowContent.wrappedValue {
-                    withAnimation(animation) {
-                        changeParamsWithAnimation(false)
-                    }
-                }
-            }
             .overlay(
                 Group {
                     if showContent, presenterContentRect != .zero {

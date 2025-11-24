@@ -10,11 +10,6 @@ import SwiftUI
 import Combine
 import Foundation
 
-extension Notification.Name {
-    static let forcePopupDismissAnimation = Notification.Name("forcePopupDismissAnimation")
-}
-
-
 struct MemoryAddress<T>: CustomStringConvertible {
 
     let intValue: Int
