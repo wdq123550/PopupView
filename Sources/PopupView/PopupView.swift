@@ -376,7 +376,8 @@ public struct Popup<PopupContent: View>: ViewModifier {
                         sheetWithDragGesture()
                     }
                 }
-            )
+            )// 🟡 关键补丁：绑定 shouldShowContent 的显式动画
+            .animation(animation, value: shouldShowContent.wrappedValue)
     }
 
     @ViewBuilder
