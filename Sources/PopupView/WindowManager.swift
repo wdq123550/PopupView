@@ -1,5 +1,5 @@
 //
-//  HostingParentController.swift
+//  WindowManager.swift
 //  PopupView
 //
 //  Created by Alisa Mylnikova on 02.06.2025.

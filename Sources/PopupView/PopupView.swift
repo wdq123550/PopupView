@@ -1,5 +1,5 @@
 //
-//  PopupView.swift
+//  Popup.swift
 //  PopupView
 //
 //  Created by Alisa Mylnikova on 23/04/2020.
